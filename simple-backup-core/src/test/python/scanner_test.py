@@ -3,10 +3,14 @@ import file_db
 import scanner
 import tempfile
 import os
+import shutil
+import logging
 
 class Test_scanner_test(unittest.TestCase):
 
     def setUp(self):
+        logging.basicConfig(level=logging.INFO)
+
         self.tmpdir = tempfile.mkdtemp()
         return super().setUp()
 
@@ -17,7 +21,8 @@ class Test_scanner_test(unittest.TestCase):
     def test_A(self):
         db = file_db.FileDB(os.path.join(self.tmpdir, 'test.db'))
         db.add_backup('local', 'test_backup', 'f:\\private')
-        scanner.scan('local', 'test_backup', db)
+        changes = scanner.scan('local', 'test_backup', db)
+        print(changes)
 
 if __name__ == '__main__':
     unittest.main()
