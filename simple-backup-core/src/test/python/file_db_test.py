@@ -7,7 +7,7 @@ import os
 class Test_file_db_test(unittest.TestCase):
 
     def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
+        self.tmpdir = tempfile.mkdtemp(prefix='db_test_')
         return super().setUp()
 
     def tearDown(self):

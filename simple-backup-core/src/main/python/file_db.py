@@ -23,7 +23,9 @@ class FileDB:
                 host TEXT,
                 name TEXT,
                 local_root_path TEXT,
-                last_update DATETIME
+                last_update DATETIME,
+                UNIQUE(host, local_root_path)
+                UNIQUE(host, name)
                 )''')
             c.execute('''CREATE TABLE local_files (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +39,7 @@ class FileDB:
                 backup_storage_path TEXT,
                 update_time DATETIME,
                 digest TEXT,
-                hard_links INTEGER
+                hard_links INTEGER DEFAULT(0)
                 )''')
             db.commit()
 
@@ -46,6 +48,23 @@ class FileDB:
             c = db.cursor()
             c.execute('INSERT INTO backups (host, name, local_root_path) VALUES (?, ?, ?)', (localhost, backup_name, local_path))
             db.commit()
+            return c.lastrowid
+
+    def add_backup_file(self, backup_id, backup_storage_path, update_time, digest):
+        with sqlite3.connect(self.db_file) as db:
+            c = db.cursor()
+            c.execute('INSERT INTO backup_files (backup_id, backup_storage_path, update_time, digest) VALUES (?, ?, ?, ?)', (backup_id, backup_storage_path, int(update_time), digest))
+            db.commit()
+            return c.lastrowid
+
+    def add_local_file(self, backup_id, local_path, backup_file_id):
+        with sqlite3.connect(self.db_file) as db:
+            c = db.cursor()
+            c.execute('INSERT INTO local_files (backup_id, local_path, backup_file_id) VALUES (?, ?, ?)', (backup_id, local_path, backup_file_id))
+            local_file_id = c.lastrowid
+            c.execute('UPDATE backup_files SET hard_links = hard_links + 1 WHERE id = ?', (backup_file_id,))
+            db.commit()
+            return local_file_id
 
     def get_backup_info(self, localhost, backup_name):
         with sqlite3.connect(self.db_file) as db:
@@ -58,7 +77,7 @@ class FileDB:
             elif len(results) == 1:
                 return results[0]
             else:
-                raise RuntimeError('Expected single result')
+                raise RuntimeError('Expected single result. Db: %s, host: %s, backup name: %s' % (self.db_file, localhost, backup_name))
 
     def get_local_file(self, backup_id, local_path = None, backup_file_id = None):
         with sqlite3.connect(self.db_file) as db:
